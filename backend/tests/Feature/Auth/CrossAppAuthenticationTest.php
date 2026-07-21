@@ -256,4 +256,33 @@ class CrossAppAuthenticationTest extends TestCase
 
         $this->postJson(self::CROSS_APP_AUTH_ROUTE, ['code' => 'code-11'])->assertStatus(429);
     }
+
+    public function test_provisioned_membership_uses_valid_role_and_login_survives(): void
+    {
+        Http::fake([
+            self::VALIDATE_URL => Http::response([
+                'user_id' => 'tuvens-user-123',
+                'email' => 'organiser@example.com',
+                'name' => 'Test Organiser',
+                'organiser' => true,
+            ], 200),
+        ]);
+
+        $this->postJson(self::CROSS_APP_AUTH_ROUTE, ['code' => 'one-time-code'])->assertOk();
+
+        $user = User::where('external_user_id', 'tuvens-user-123')->firstOrFail();
+        $membership = AccountUser::where('user_id', $user->id)->firstOrFail();
+
+        // LoginService calls Role::from() on this value — an unbacked value
+        // (e.g. the old 'OWNER') bricks password login for the user.
+        $this->assertNotNull(\HiEvents\DomainObjects\Enums\Role::tryFrom($membership->role));
+
+        $user->update(['password' => bcrypt('a-known-password')]);
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson('/auth/login', [
+            'email' => 'organiser@example.com',
+            'password' => 'a-known-password',
+        ])->assertOk();
+    }
 }
