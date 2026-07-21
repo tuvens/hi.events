@@ -52,4 +52,10 @@ return [
     'open_exchange_rates' => [
         'app_id' => env('OPEN_EXCHANGE_RATES_APP_ID'),
     ],
+
+    'main_backend' => [
+        'url' => env('MAIN_BACKEND_URL'),
+        'shared_secret' => env('MAIN_BACKEND_SHARED_SECRET'),
+        'timeout' => env('MAIN_BACKEND_TIMEOUT', 10),
+    ],
 ];
