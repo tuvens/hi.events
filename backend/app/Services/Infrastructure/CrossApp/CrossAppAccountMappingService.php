@@ -8,6 +8,7 @@ use HiEvents\Models\Account;
 use HiEvents\Models\AccountUser;
 use HiEvents\Models\User;
 use HiEvents\Models\Organizer;
+use HiEvents\DomainObjects\Enums\Role;
 use HiEvents\DomainObjects\UserDomainObject;
 use HiEvents\DomainObjects\AccountDomainObject;
 use HiEvents\DomainObjects\OrganizerDomainObject;
@@ -68,7 +69,7 @@ class CrossAppAccountMappingService
             ]);
             
             // Ensure user is associated with this account
-            $this->ensureUserAccountAssociation($user, $existingAccount, 'OWNER');
+            $this->ensureUserAccountAssociation($user, $existingAccount);
             
             // Ensure account is verified since it's a Tuvens account
             $this->ensureAccountIsVerified($existingAccount);
@@ -108,7 +109,7 @@ class CrossAppAccountMappingService
         ]);
         
         $newAccount = $this->createAccountForTuvensUser($tuvensAccountId, $userEmail, $userName);
-        $this->ensureUserAccountAssociation($user, $newAccount, 'OWNER');
+        $this->ensureUserAccountAssociation($user, $newAccount);
         
         // Ensure the new account has an organizer for event creation
         $this->ensureAccountHasOrganizer($newAccount, $userEmail, $userName);
@@ -169,7 +170,9 @@ class CrossAppAccountMappingService
     /**
      * Ensure user is associated with an account
      */
-    private function ensureUserAccountAssociation(UserDomainObject $user, AccountDomainObject $account, string $role = 'OWNER'): void
+    // Role must be a backed value of the Role enum — LoginService calls
+    // Role::from() on it, so an invalid value bricks login for the user.
+    private function ensureUserAccountAssociation(UserDomainObject $user, AccountDomainObject $account, ?string $role = null): void
     {
         $existing = AccountUser::where('user_id', $user->getId())
             ->where('account_id', $account->getId())
@@ -179,7 +182,7 @@ class CrossAppAccountMappingService
             $accountUser = new AccountUser();
             $accountUser->user_id = $user->getId();
             $accountUser->account_id = $account->getId();
-            $accountUser->role = $role;
+            $accountUser->role = $role ?? Role::ADMIN->value;
             $accountUser->status = 'ACTIVE';
             $accountUser->save();
 
