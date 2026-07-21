@@ -13,7 +13,7 @@ import {formatCurrency} from "../../../../utilites/currency.ts";
 import {formatDateWithLocale} from "../../../../utilites/dates.ts";
 import {Button, SegmentedControl, Skeleton, Tooltip} from "@mantine/core";
 import {useMediaQuery} from "@mantine/hooks";
-import {IconAlertCircle, IconX} from "@tabler/icons-react";
+import {IconAlertCircle, IconExternalLink, IconX} from "@tabler/icons-react";
 import {useGetAccount} from "../../../../queries/useGetAccount.ts";
 import {useUpdateEventStatus} from "../../../../mutations/useUpdateEventStatus.ts";
 import {confirmationDialog} from "../../../../utilites/confirmationDialog.tsx";
@@ -21,6 +21,7 @@ import {showError, showSuccess} from "../../../../utilites/notifications.tsx";
 import {useEffect, useRef, useState} from 'react';
 import {EventLifecycleStatus, EventStatus, StripePlatform} from "../../../../types.ts";
 import {isHiEvents} from "../../../../utilites/helpers.ts";
+import {getConfig} from "../../../../utilites/config.ts";
 import {StripeConnectButton} from "../../../common/StripeConnectButton";
 import {trackEvent, AnalyticsEvents} from "../../../../utilites/analytics.ts";
 
@@ -39,6 +40,7 @@ export const EventDashboard = () => {
     const eventQuery = useGetEvent(eventId);
     const {data: me} = useGetMe();
     const event = eventQuery?.data;
+    const tuvensEventId = event?.attributes?.find((attribute) => attribute.name === 'tuvens_event_id')?.value;
     const defaultDateRangeRef = useRef<string | null>(null);
     if (event && !defaultDateRangeRef.current) {
         defaultDateRangeRef.current = (event.lifecycle_status === EventLifecycleStatus.ENDED
@@ -123,6 +125,21 @@ export const EventDashboard = () => {
                     </Trans>
                 )}
             </PageTitle>
+
+            {tuvensEventId !== undefined && (
+                <Button
+                    component="a"
+                    href={`${getConfig('VITE_TUVENS_URL', 'https://tuvens.com')}/event/${String(tuvensEventId)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="subtle"
+                    size="compact-sm"
+                    leftSection={<IconExternalLink size={14}/>}
+                    style={{alignSelf: 'flex-start', marginBottom: 12}}
+                >
+                    {t`View on Tuvens`}
+                </Button>
+            )}
 
             {!event && <DashBoardSkeleton/>}
 
