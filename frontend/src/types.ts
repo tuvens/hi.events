@@ -23,7 +23,8 @@ export type ConfigKeys =
     | 'VITE_I_HAVE_PURCHASED_A_LICENCE'
     | 'VITE_DEFAULT_IMAGE_URL'
     | 'VITE_COOKIE_CONSENT_ENABLED'
-    | 'VITE_COOKIE_CONSENT_TEXT';
+    | 'VITE_COOKIE_CONSENT_TEXT'
+    | 'VITE_TUVENS_URL';
 
 export enum StripePlatform {
     Canada = 'ca',
@@ -330,6 +331,13 @@ export interface Event extends EventBase {
     organizer_id?: IdParam;
     location_details?: VenueAddress;
     statistics?: EventStatistics;
+    attributes?: EventAttribute[];
+}
+
+export interface EventAttribute {
+    name: string;
+    value: unknown;
+    is_public?: boolean;
 }
 
 export interface EventStatistics {
