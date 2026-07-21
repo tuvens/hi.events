@@ -238,7 +238,9 @@ $router->prefix('/auth')->group(
         $router->post('/reset-password/{reset_token}', ResetPasswordAction::class)->name('auth.reset-password');
 
         // Cross-App Authentication: one-time Tuvens code exchange (code in POST body only)
-        $router->post('/cross-app/validate', [CrossAppAuthAction::class, 'validateSession'])->name('auth.cross-app.validate');
+        $router->post('/cross-app/validate', [CrossAppAuthAction::class, 'validateSession'])
+            ->middleware('throttle:10,1')
+            ->name('auth.cross-app.validate');
     }
 );
 

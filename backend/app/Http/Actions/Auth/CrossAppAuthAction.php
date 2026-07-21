@@ -37,9 +37,9 @@ class CrossAppAuthAction extends BaseAuthAction
      */
     public function validateSession(Request $request): JsonResponse
     {
-        // Read strictly from the request body — input() would also accept
+        // Read strictly from the JSON request body — input() would also accept
         // query-string values, which is exactly the leak this flow removes.
-        $code = $request->json('code', $request->post('code'));
+        $code = $request->json('code');
 
         if (!is_string($code) || $code === '') {
             return response()->json([
@@ -52,6 +52,18 @@ class CrossAppAuthAction extends BaseAuthAction
             $userData = $this->authService->validateSessionWithMainBackend($code);
 
             if (!$userData) {
+                return response()->json([
+                    'message' => 'Invalid or expired authorization code',
+                    'error' => 'UNAUTHORIZED',
+                ], 401);
+            }
+
+            // Defense in depth: tuvens-api's mint endpoint is organiser-gated,
+            // but a session is only worth minting here for organisers — refuse
+            // any validate response that doesn't say so explicitly.
+            if (($userData['organiser'] ?? false) !== true) {
+                $this->logger->warning('Cross-app validate response missing organiser flag');
+
                 return response()->json([
                     'message' => 'Invalid or expired authorization code',
                     'error' => 'UNAUTHORIZED',

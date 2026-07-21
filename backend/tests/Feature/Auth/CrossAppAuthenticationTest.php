@@ -78,6 +78,7 @@ class CrossAppAuthenticationTest extends TestCase
             self::VALIDATE_URL => Http::response([
                 'user_id' => 'tuvens-user-123',
                 'email' => 'organiser@example.com',
+                'organiser' => true,
             ], 200),
         ]);
 
@@ -159,6 +160,7 @@ class CrossAppAuthenticationTest extends TestCase
                 'user_id' => 'tuvens-user-123',
                 'email' => 'organiser@example.com',
                 'name' => 'Test Organiser',
+                'organiser' => true,
             ], 200),
         ]);
 
@@ -176,6 +178,7 @@ class CrossAppAuthenticationTest extends TestCase
                 'user_id' => 'tuvens-user-123',
                 'email' => 'organiser@example.com',
                 'name' => 'Test Organiser',
+                'organiser' => true,
             ], 200),
         ]);
 
@@ -211,6 +214,7 @@ class CrossAppAuthenticationTest extends TestCase
                 'user_id' => 'tuvens-user-123',
                 'email' => 'organiser@example.com',
                 'name' => 'Test Organiser',
+                'organiser' => true,
             ], 200),
         ]);
 
@@ -222,5 +226,34 @@ class CrossAppAuthenticationTest extends TestCase
         $newAccount = Account::where('external_account_id', 'tuvens-user-123')->first();
         $this->assertNotNull($newAccount);
         $this->assertNotEquals($sharedAccount->id, $newAccount->id);
+    }
+
+    public function test_response_without_organiser_flag_is_refused(): void
+    {
+        Http::fake([
+            self::VALIDATE_URL => Http::response([
+                'user_id' => 'tuvens-user-123',
+                'email' => 'organiser@example.com',
+                'name' => 'Not An Organiser',
+            ], 200),
+        ]);
+
+        $this->postJson(self::CROSS_APP_AUTH_ROUTE, ['code' => 'one-time-code'])
+            ->assertStatus(401);
+
+        $this->assertEquals(0, User::where('external_user_id', 'tuvens-user-123')->count());
+    }
+
+    public function test_exchange_endpoint_is_throttled(): void
+    {
+        Http::fake([
+            self::VALIDATE_URL => Http::response(['error' => 'Invalid code'], 401),
+        ]);
+
+        foreach (range(1, 10) as $i) {
+            $this->postJson(self::CROSS_APP_AUTH_ROUTE, ['code' => "code-{$i}"])->assertStatus(401);
+        }
+
+        $this->postJson(self::CROSS_APP_AUTH_ROUTE, ['code' => 'code-11'])->assertStatus(429);
     }
 }
