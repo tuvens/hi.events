@@ -159,6 +159,9 @@ use HiEvents\Http\Actions\Sitemap\GetSitemapEventsAction;
 use HiEvents\Http\Actions\Sitemap\GetSitemapIndexAction;
 use HiEvents\Http\Actions\Sitemap\GetSitemapOrganizersAction;
 use HiEvents\Http\Actions\TaxesAndFees\CreateTaxOrFeeAction;
+use HiEvents\Http\Actions\Tuvens\CreateTuvensEventAction;
+use HiEvents\Http\Actions\Tuvens\UpdateTuvensEventAction;
+use HiEvents\Http\Middleware\TuvensInternalApiMiddleware;
 use HiEvents\Http\Actions\TaxesAndFees\DeleteTaxOrFeeAction;
 use HiEvents\Http\Actions\TaxesAndFees\EditTaxOrFeeAction;
 use HiEvents\Http\Actions\TaxesAndFees\GetTaxOrFeeAction;
@@ -450,6 +453,14 @@ $router->middleware(['auth:api'])->group(
         // Images
         $router->post('/images', CreateImageAction::class);
         $router->delete('/images/{image_id}', DeleteImageAction::class);
+    }
+);
+
+// Tuvens server-to-server surface (HMAC-authenticated, contract §3/§5)
+$router->prefix('/tuvens')->middleware(TuvensInternalApiMiddleware::class)->group(
+    function (Router $router): void {
+        $router->post('/events', CreateTuvensEventAction::class)->name('tuvens.events.create');
+        $router->put('/events/{event_id}', UpdateTuvensEventAction::class)->name('tuvens.events.update');
     }
 );
 

@@ -14,6 +14,7 @@ use HiEvents\DomainObjects\OrganizerDomainObject;
 use HiEvents\Repository\Interfaces\AccountRepositoryInterface;
 use HiEvents\Repository\Interfaces\AccountUserRepositoryInterface;
 use HiEvents\Repository\Eloquent\Value\Relationship;
+use HiEvents\Services\Domain\Organizer\CreateDefaultOrganizerSettingsService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -30,6 +31,7 @@ class CrossAppAccountMappingService
     public function __construct(
         private AccountRepositoryInterface $accountRepository,
         private AccountUserRepositoryInterface $accountUserRepository,
+        private CreateDefaultOrganizerSettingsService $createDefaultOrganizerSettingsService,
         private LoggerInterface $logger
     ) {}
 
@@ -364,6 +366,12 @@ class CrossAppAccountMappingService
         $organizer->currency = 'EUR';
         $organizer->status = 'ACTIVE';
         $organizer->save();
+
+        // Organizer settings must exist before events can be created for the
+        // account (event creation derives homepage theme settings from them).
+        $this->createDefaultOrganizerSettingsService->createOrganizerSettings(
+            OrganizerDomainObject::hydrateFromModel($organizer)
+        );
 
         $this->logger->info('Created organizer for Tuvens user account', [
             'account_id' => $account->getId(),
