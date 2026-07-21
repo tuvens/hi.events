@@ -25,13 +25,13 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: backend
+          POSTGRES_DB: testing
           POSTGRES_USER: username
           POSTGRES_PASSWORD: password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U username -d backend"
+          --health-cmd "pg_isready -U username -d testing"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -40,7 +40,7 @@ jobs:
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
-      DB_DATABASE: backend
+      DB_DATABASE: testing
       DB_USERNAME: username
       DB_PASSWORD: password
       APP_KEY: base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10=
@@ -77,6 +77,11 @@ jobs:
 
       - name: Install dependencies
         run: cd backend && composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Migrate test database
+        # DatabaseTransactions-based tests assume an existing schema; migrate
+        # explicitly instead of depending on a RefreshDatabase test running first.
+        run: cd backend && php artisan migrate --force
 
       - name: Run PHPUnit (Unit + Feature) with coverage
         run: cd backend && php -d memory_limit=1G ./vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text

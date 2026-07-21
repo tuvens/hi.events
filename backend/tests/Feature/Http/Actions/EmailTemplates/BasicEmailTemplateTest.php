@@ -32,7 +32,7 @@ class BasicEmailTemplateTest extends TestCase
 
         // Create user with account
         $password = 'password123';
-        $this->user = User::factory()->password($password)->withAccount()->create();
+        $this->user = User::factory()->password($password)->withAccount()->create(['locale' => 'en']);
 
         // Login to get JWT token
         $loginResponse = $this->postJson('/auth/login', [
