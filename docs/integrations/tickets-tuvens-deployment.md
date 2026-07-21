@@ -20,7 +20,7 @@ Do not set the `APP_SAAS_STRIPE_APPLICATION_FEE_*` variables.
 | Env | Example | Purpose |
 |---|---|---|
 | `MAIN_BACKEND_URL` | `https://api.tuvens.com` | tuvens-api base URL. Used for the S2S validate call (`/api/service/hi-events/session/validate`) and as the base of the auto-registered webhook receiver (`/api/webhooks/ticketing/hi-events`). |
-| `MAIN_BACKEND_SHARED_SECRET` | *(operator-provisioned)* | `HIEVENTS_S2S_SECRET` counterpart. HMAC key for both directions of the S2S seam. **Operator checkpoint: the original development secret was exposed and MUST be rotated before any deployment; provision the rotated value here and in tuvens-api, never in code or docs.** |
+| `MAIN_BACKEND_SHARED_SECRET` | *(operator-provisioned)* | `HIEVENTS_S2S_SECRET` counterpart. HMAC key for both directions of the S2S seam. **Canonical home: `backend/.env` (gitignored) locally, the deploy environment in production — never a tracked file.** Rotation checkpoint: **complete** (2026-07-21); the exposed development value is burned and invalid. |
 | `MAIN_BACKEND_TIMEOUT` | `10` | Seconds for S2S HTTP calls. |
 | `APP_FRONTEND_URL` | `https://tickets.tuvens.com` | Base for `event_url` / `widget_embed_url` in the S2S create response and all outbound links. |
 | `CORS_ALLOWED_ORIGINS` | `https://tuvens.com,https://www.tuvens.com,https://tickets.tuvens.com` | Comma-separated allow-list (config/cors.php). Never `*` in production — cookies ride on these responses. |
@@ -49,8 +49,42 @@ either, the design is being violated.
   `Signature: hex(HMAC-SHA256(webhook_secret, rawBody))`, envelope
   `{event_type, event_sent_at, payload}`.
 
+## Local development bring-up
+
+The dev stack is `docker/development/docker-compose.dev.yml`: nginx terminates
+TLS on **https://localhost:8443** and proxies `/` → the SSR frontend
+(`frontend:5678`, `yarn dev:ssr`) and `/api/` → the backend. Laravel reads
+`backend/.env` through the volume mount — that gitignored file is where the
+shared secret and any real credentials live. The **tracked**
+`docker/development/.env` only feeds compose interpolation (ports, URLs, DB
+name) and must never contain secrets; for local-only overrides use
+`docker/development/.env.local` (gitignored).
+
+```bash
+cd docker/development
+./start-dev.sh                # or: ./start-dev.sh --certs=signed (mkcert)
+# equivalent manual sequence:
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.dev.yml exec -T backend composer install --ignore-platform-reqs --no-interaction
+docker compose -f docker-compose.dev.yml exec backend php artisan migrate   # applies external_user_id / external_account_id
+```
+
+Verify: `curl -sk https://localhost:8443/api/health` (backend),
+`curl -sk https://localhost:8443/ | head` (SSR frontend),
+`https://localhost:8443/auth/cross-app` loads and shows the sign-in error
+state — a 401 on the code exchange is **expected** locally until the
+tuvens-api S2S counterpart exists.
+
+Known local pitfalls (root causes found 2026-07-21): the SSR container must
+serve plain HTTP on 5678 (nginx does TLS — do not re-add vite/server.js
+`https` blocks); stale pre-hardening env vars (`VITE_TUVENS_SHARED_SECRET`,
+`VITE_SKIP_TUVENS_VALIDATION`, `MAIN_BACKEND_RETRY_ATTEMPTS`,
+`MAIN_BACKEND_CACHE_TTL`, `AWS_COGNITO_*`) are dead — remove them; with the
+MinIO endpoint configured, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` must
+be the MinIO credentials, never real AWS keys.
+
 ## Operator checkpoints (page, don't improvise)
 
-1. Rotate + provision `MAIN_BACKEND_SHARED_SECRET` both sides.
+1. ~~Rotate + provision `MAIN_BACKEND_SHARED_SECRET` both sides.~~ **Done 2026-07-21** (fingerprint-verified both sides; old value burned).
 2. DNS + TLS for `tickets.tuvens.com`.
 3. Stripe test account for end-to-end fee verification.

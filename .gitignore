@@ -27,5 +27,6 @@ docs/.claude
 
 # Local development TLS certificates and env — never commit
 docker/development/certs/
+docker/development/.env.local
 frontend/ssl/
 frontend/.env.development
