@@ -5,9 +5,13 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
+      - '.github/workflows/unit-tests.yml'
+      - '.github/scripts/coverage-ratchet.php'
   pull_request:
     paths:
       - 'backend/**'
+      - '.github/workflows/unit-tests.yml'
+      - '.github/scripts/coverage-ratchet.php'
 
 jobs:
   run-tests:
@@ -17,6 +21,33 @@ jobs:
       matrix:
         php-versions: ['8.2', '8.3', '8.4']
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: username
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U username -d testing"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: username
+      DB_PASSWORD: password
+      APP_KEY: base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10=
+      # Test-only JWT signing secret — feature tests mint real JWTs; without
+      # this every HTTP request 500s with SecretMissingException.
+      JWT_SECRET: ci-only-jwt-secret-not-used-outside-tests-0123456789abcdef
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -25,13 +56,13 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
-          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, tokenizer
+          extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_pgsql, tokenizer
           ini-values: post_max_size=256M, upload_max_filesize=256M
-          coverage: none
+          coverage: pcov
 
       - name: Get Composer Cache Directory
         id: composer-cache
-        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache dependencies
         uses: actions/cache@v3
@@ -47,5 +78,20 @@ jobs:
       - name: Install dependencies
         run: cd backend && composer install --prefer-dist --no-progress --no-interaction
 
-      - name: Run PHPUnit Tests
-        run: cd backend && ./vendor/bin/phpunit tests/Unit --no-coverage
+      - name: Migrate test database
+        # DatabaseTransactions-based tests assume an existing schema; migrate
+        # explicitly instead of depending on a RefreshDatabase test running first.
+        run: cd backend && php artisan migrate --force
+
+      - name: Run PHPUnit (Unit + Feature) with coverage
+        run: cd backend && php -d memory_limit=1G ./vendor/bin/phpunit --coverage-clover coverage.xml --coverage-text
+
+      - name: Enforce coverage ratchet
+        run: php .github/scripts/coverage-ratchet.php backend/coverage.xml backend/coverage-baseline.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: matrix.php-versions == '8.3'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-clover
+          path: backend/coverage.xml
