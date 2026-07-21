@@ -44,6 +44,9 @@ jobs:
       DB_USERNAME: username
       DB_PASSWORD: password
       APP_KEY: base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/ZoKZvp6fiiM10=
+      # Test-only JWT signing secret — feature tests mint real JWTs; without
+      # this every HTTP request 500s with SecretMissingException.
+      JWT_SECRET: ci-only-jwt-secret-not-used-outside-tests-0123456789abcdef
 
     steps:
       - name: Checkout code
