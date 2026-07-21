@@ -69,7 +69,7 @@ docker compose -f docker-compose.dev.yml exec -T backend composer install --igno
 docker compose -f docker-compose.dev.yml exec backend php artisan migrate   # applies external_user_id / external_account_id
 ```
 
-Verify: `curl -sk https://localhost:8443/api/health` (backend),
+Verify: `curl -sk -o /dev/null -w '%{http_code}' https://localhost:8443/api/` → 200 (backend; there is no dedicated /api/health route — the container healthcheck covers liveness),
 `curl -sk https://localhost:8443/ | head` (SSR frontend),
 `https://localhost:8443/auth/cross-app` loads and shows the sign-in error
 state — a 401 on the code exchange is **expected** locally until the
