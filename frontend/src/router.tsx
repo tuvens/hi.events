@@ -71,6 +71,13 @@ export const router: RouteObject[] = [
                     const AcceptInvitation = await import("./components/routes/auth/AcceptInvitation");
                     return { Component: AcceptInvitation.default };
                 }
+            },
+            {
+                path: "cross-app",
+                async lazy() {
+                    const CrossAppAuth = await import("./components/routes/auth/CrossAppAuth");
+                    return {Component: CrossAppAuth.default};
+                }
             }
         ]
     },

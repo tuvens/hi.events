@@ -20,3 +20,12 @@ prompts/
 
 /plans/**
 /plans
+
+# Shared documentation - should not be committed to this repo
+docs/tuvens-shared/
+docs/.claude
+
+# Local development TLS certificates and env — never commit
+docker/development/certs/
+frontend/ssl/
+frontend/.env.development
