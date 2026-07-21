@@ -30,6 +30,7 @@ use HiEvents\Http\Actions\Auth\LogoutAction;
 use HiEvents\Http\Actions\Auth\RefreshTokenAction;
 use HiEvents\Http\Actions\Auth\ResetPasswordAction;
 use HiEvents\Http\Actions\Auth\ValidateResetPasswordTokenAction;
+use HiEvents\Http\Actions\Auth\CrossAppAuthAction;
 use HiEvents\Http\Actions\CapacityAssignments\CreateCapacityAssignmentAction;
 use HiEvents\Http\Actions\CapacityAssignments\DeleteCapacityAssignmentAction;
 use HiEvents\Http\Actions\CapacityAssignments\GetCapacityAssignmentAction;
@@ -235,6 +236,9 @@ $router->prefix('/auth')->group(
         // Reset Passwords
         $router->get('/reset-password/{reset_token}', ValidateResetPasswordTokenAction::class)->name('auth.validate-reset-password-token');
         $router->post('/reset-password/{reset_token}', ResetPasswordAction::class)->name('auth.reset-password');
+
+        // Cross-App Authentication: one-time Tuvens code exchange (code in POST body only)
+        $router->post('/cross-app/validate', [CrossAppAuthAction::class, 'validateSession'])->name('auth.cross-app.validate');
     }
 );
 
